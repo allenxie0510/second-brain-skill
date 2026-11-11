@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# 用户项目内容不要提交进这个仓库
+data/
+dist/
+sources/
+!examples/demo/sources/
+!examples/demo/brain.json
+tests/
+.env
