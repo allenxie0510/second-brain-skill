@@ -14,8 +14,8 @@
 ## 快速开始
 
 ```bash
-git clone https://github.com/<you>/second-brain-studio.git
-cd second-brain-studio
+git clone https://github.com/allenxie0510/second-brain-skill.git
+cd second-brain-skill
 
 # 1. 新建一个知识库项目
 python3 engine/sbs.py new ~/我的第二大脑 --title "我的第二大脑" --sub "垂类 · 知识库"
@@ -111,6 +111,14 @@ curl -sL "https://example.com/article" > sources/文章标题.html
 5. **自检调优**：`verify` 看逐题命中。哪道题 Top1 错了就给正确卡补口语检索标签（加在 `tags` 最前面），重跑 `build + verify`。真实用户问过的问题都加进 `tests/questions.json`，它就是你的回归测试。
 6. **品牌化**：`brain.json` 里的 `persona`（模型人设）、`hero`（首页三行大字）、`scope`（覆盖范围）、`offtopic`（本行业特有的"看起来像但库里没有"的词）。
 7. **分发**：整个 `dist/` 打包发人，或传到 Vercel / Cloudflare Pages / 对象存储。
+
+## 让 AI Agent 替你执行
+
+本仓库自带 `SKILL.md`（AI Agent 执行手册）。任何能执行 shell 的模型助手
+（Claude Code / WorkBuddy / Cursor / GPT + 终端）读到本仓库后，都能按手册自动完成：
+建项目 → 审查并优化问题域 → 试跑卡片 → 构建自检 → 按命中报告迭代。
+直接把这个仓库喂给你的 Agent，说「把 sources 里的资料做成第二大脑」即可；
+手册里还包含「用户没配 Key 时如何搭好骨架等人续跑」的降级路径。
 
 ## 云端模式（可选）
 

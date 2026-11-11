@@ -857,12 +857,12 @@ let cfg=loadCfg(), hist=loadHist();
 let viewMsgs=null, viewMeta=null;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-function loadCfg(){try{return JSON.parse(localStorage.getItem('opc_llm')||'null')||null}catch(e){return null}}
-function loadHist(){try{const a=JSON.parse(localStorage.getItem('opc_hist')||'[]');return Array.isArray(a)?a.filter(h=>h&&h.q):[]}catch(e){return []}}
+function loadCfg(){try{return JSON.parse(localStorage.getItem('sbs_llm')||'null')||null}catch(e){return null}}
+function loadHist(){try{const a=JSON.parse(localStorage.getItem('sbs_hist')||'[]');return Array.isArray(a)?a.filter(h=>h&&h.q):[]}catch(e){return []}}
 function saveHist(){
   const data=hist.slice(0,30);
-  try{localStorage.setItem('opc_hist',JSON.stringify(data));return;}catch(e){}
-  try{const half=data.slice(0,15);localStorage.setItem('opc_hist',JSON.stringify(half));hist=half;return;}catch(e){}
+  try{localStorage.setItem('sbs_hist',JSON.stringify(data));return;}catch(e){}
+  try{const half=data.slice(0,15);localStorage.setItem('sbs_hist',JSON.stringify(half));hist=half;return;}catch(e){}
   toast('浏览器存储空间不足，历史未能保存');
 }
 function activeMsgs(){return viewMsgs||msgs;}
@@ -875,7 +875,7 @@ function snap(m){return {q:m.q,pending:false,html:m.html,plain:m.plain,cards:m.c
 
 /* ---- 零后端备份：导出 / 导入历史（纯前端，不依赖任何服务） ---- */
 function exportPayload(){
-  return JSON.stringify({app:'opc-second-brain',version:1,exportedAt:new Date().toISOString(),
+  return JSON.stringify({app:'sbs-second-brain',version:1,exportedAt:new Date().toISOString(),
     count:hist.length,history:hist},null,2);
 }
 function downloadHist(){
@@ -884,7 +884,7 @@ function downloadHist(){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;
   const d=new Date(),p=x=>String(x).padStart(2,'0');
-  a.download='opc-history-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+'.json';
+  a.download='sbs-history-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+'.json';
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
   toast('已导出 '+hist.length+' 条提问');
@@ -917,7 +917,7 @@ function cleanSnap(m){
 function importText(txt){
   let d;try{d=JSON.parse(txt)}catch(e){return {ok:false,msg:'不是有效的 JSON 文件'};}
   let arr=null;
-  if(d&&d.app==='opc-second-brain'&&Array.isArray(d.history))arr=d.history;
+  if(d&&d.app==='sbs-second-brain'&&Array.isArray(d.history))arr=d.history;
   else if(Array.isArray(d))arr=d;
   else return {ok:false,msg:'不是本工具导出的历史文件'};
   const valid=arr.filter(h=>h&&typeof h.q==='string'&&h.q.trim());
@@ -944,7 +944,7 @@ const domName={};TAX.domains.forEach(d=>domName[d.id]=d.name);
 
 /* ========== Markdown 白名单渲染 ==========
    模型文本一律先 esc，再按固定标签集合生成结构；绝不把原文直接塞进 innerHTML。
-   只支持 OPC 问答用得到的语法：段落 / 小标题 / 列表 / 加粗 / 斜体 / 引用 / 分隔线 / 行内代码；
+   只支持 问答用得到的语法：段落 / 小标题 / 列表 / 加粗 / 斜体 / 引用 / 分隔线 / 行内代码；
    表格降级成列表，代码块降级成等宽块。 */
 function mdInline(s){
  s=esc(s);
@@ -1187,7 +1187,7 @@ function notesReady(){return BRAND.cloud?(!!(cfg&&cfg.passcode)):true;}
 /* 笔记视图状态：已展开的卡片 / 是否从笔记跳去回看 / 跳走前的滚动位置 */
 const notesOpen=new Set();let noteJump=false,notesScroll=0;
 /* 侧栏分组折叠：默认全展开，选择存 localStorage，刷新不丢 */
-function loadSec(){try{const s=JSON.parse(localStorage.getItem('opc_sec')||'{}');return {dom:s.dom!==false,hist:s.hist!==false};}catch(e){return {dom:true,hist:true};}}
+function loadSec(){try{const s=JSON.parse(localStorage.getItem('sbs_sec')||'{}');return {dom:s.dom!==false,hist:s.hist!==false};}catch(e){return {dom:true,hist:true};}}
 let secOpen=loadSec();
 function applySections(){
  for(const k of ['dom','hist']){
@@ -1258,7 +1258,7 @@ async function saveNote(key,ed){
   const payload={conv:conv,idx:0,q:q,body:body,answer:answer,src:src};
   let saved;
   if(BRAND.cloud){
-   const r=await fetch('api/notes',{method:'POST',headers:{'Content-Type':'application/json','X-OPC-Token':cfg.passcode},
+   const r=await fetch('api/notes',{method:'POST',headers:{'Content-Type':'application/json','X-SBS-Token':cfg.passcode},
     body:JSON.stringify({note:payload})});
    const j=await r.json().catch(()=>null);
    if(!r.ok||!j||!j.ok)throw new Error((j&&j.error&&j.error.message)||('HTTP '+r.status));
@@ -1278,7 +1278,7 @@ async function delNote(key){
  const n=NOTES.get(key);if(!n)return;
  try{
   if(BRAND.cloud){
-   const r=await fetch('api/notes?id='+encodeURIComponent(n.id),{method:'DELETE',headers:{'X-OPC-Token':(cfg&&cfg.passcode)||''}});
+   const r=await fetch('api/notes?id='+encodeURIComponent(n.id),{method:'DELETE',headers:{'X-SBS-Token':(cfg&&cfg.passcode)||''}});
    const j=await r.json().catch(()=>null);
    if(!r.ok||!j||!j.ok)throw new Error((j&&j.error&&j.error.message)||('HTTP '+r.status));
   }else{
@@ -1295,7 +1295,7 @@ async function loadNotes(){
  if(!(cfg&&cfg.passcode))return;
  for(let attempt=0;attempt<2;attempt++){
   try{
-   const r=await fetch('api/notes',{headers:{'X-OPC-Token':cfg.passcode},signal:AbortSignal.timeout(9000)});
+   const r=await fetch('api/notes',{headers:{'X-SBS-Token':cfg.passcode},signal:AbortSignal.timeout(9000)});
    if(r.status===503){if(attempt===0){await new Promise(s=>setTimeout(s,1200));continue;}return;}
    if(!r.ok)return;
    const j=await r.json().catch(()=>null);
@@ -1391,7 +1391,7 @@ async function exportNotes(){
  try{
   let b;
   if(BRAND.cloud){
-   const r=await fetch('api/notes?export=1',{headers:{'X-OPC-Token':cfg.passcode}});
+   const r=await fetch('api/notes?export=1',{headers:{'X-SBS-Token':cfg.passcode}});
    if(!r.ok)throw new Error('HTTP '+r.status);
    b=await r.blob();
   }else{
@@ -1399,7 +1399,7 @@ async function exportNotes(){
      notes:[...NOTES.values()]},null,2)],{type:'application/json'});
   }
   const u=URL.createObjectURL(b),a=document.createElement('a');
-  a.href=u;a.download='opc-notes-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  a.href=u;a.download='sbs-notes-'+new Date().toISOString().slice(0,10)+'.json';a.click();
   setTimeout(()=>URL.revokeObjectURL(u),3000);toast('已导出全部笔记（JSON 备份）');
  }catch(e){toast('导出失败：'+e.message);}
 }
@@ -1542,7 +1542,7 @@ async function callLLM(q,cards,it,onDelta){
   if(!cfg.proxy&&!cfg.key)return null;
   const h={'Content-Type':'application/json'};
   if(!cfg.proxy)h['Authorization']='Bearer '+cfg.key;
-  else if(cfg.passcode)h['X-OPC-Token']=cfg.passcode;
+  else if(cfg.passcode)h['X-SBS-Token']=cfg.passcode;
   const payload={model:cfg.model,temperature:.25,stream:!!onDelta,messages:[
     {role:'system',content:(BRAND.persona||'你是一位严谨、克制的知识顾问')+'。先理解并直接回答用户的问题；知识卡只是参考来源之一，用不上的不要提。回答要具体、克制、可执行，不写客套话。只输出给用户看的话——不要出现卡片编号、出处、书名或类别名，也不要写「根据知识卡」「如 K019 所示」这类措辞，来源由界面单独呈现。输出格式：先给结论段，再用 ## 小标题分点与 1./- 列表，关键判断用 **加粗**；标题最多一层、列表每项一句话、整体不超过 400 字；不要用表格、代码块、HTML、emoji、脚注或多级标题。'},
     {role:'user',content:buildPrompt(q,cards,it)}]};
@@ -1663,7 +1663,7 @@ function isMobileUI(){return !!MOBILE_MQ.matches;}
 function setSideCollapsed(v){
  const collapsed=!!v&&!isMobileUI();
  document.querySelector('.app').classList.toggle('side-collapsed',collapsed);
- try{localStorage.setItem('opc_side_collapsed',collapsed?'1':'0');}catch(e){}
+ try{localStorage.setItem('sbs_side_collapsed',collapsed?'1':'0');}catch(e){}
  const b=$('sidetoggle');
  if(b){const t=collapsed?'展开侧栏':'收起侧栏';b.title=t;b.setAttribute('aria-label',t);}
  syncChromeHeights();
@@ -1761,7 +1761,7 @@ $('scroll').addEventListener('scroll',updateScrollDown,{passive:true});
 $('scroll').addEventListener('scroll',onChromeScroll,{passive:true});
 window.addEventListener('resize',()=>{syncChromeHeights();syncNoteComposer();});
 if(MOBILE_MQ.addEventListener)MOBILE_MQ.addEventListener('change',()=>{
-  setSideCollapsed(localStorage.getItem('opc_side_collapsed')==='1');
+  setSideCollapsed(localStorage.getItem('sbs_side_collapsed')==='1');
   setChrome(false);syncChromeHeights();syncNoteComposer();
 });
 window.addEventListener('orientationchange',()=>{syncChromeHeights();setChrome(false);});
@@ -1858,9 +1858,9 @@ $('sidetoggle').onclick=toggleSideCollapsed;
 $('railexpand').onclick=()=>setSideCollapsed(false);
 $('railnew').onclick=newChat;
 $('raildom').onclick=()=>{setSideCollapsed(false);secOpen.dom=true;applySections();
-  try{localStorage.setItem('opc_sec',JSON.stringify(secOpen));}catch(e){}};
+  try{localStorage.setItem('sbs_sec',JSON.stringify(secOpen));}catch(e){}};
 $('railhist').onclick=()=>{setSideCollapsed(false);secOpen.hist=true;applySections();
-  try{localStorage.setItem('opc_sec',JSON.stringify(secOpen));}catch(e){}};
+  try{localStorage.setItem('sbs_sec',JSON.stringify(secOpen));}catch(e){}};
 $('railadd').onclick=()=>$('openadd').click();
 $('railmap').onclick=()=>$('openmap').click();
 $('railnotes').onclick=()=>$('opennotes').click();
@@ -1883,7 +1883,7 @@ $('cfg_mode').onchange=function(){$('cfg_warn').style.display=this.value==='prox
 function openSet(){$('cfg_base').value=cfg?cfg.base||'':'';$('cfg_model').value=cfg?cfg.model||'':'';$('cfg_key').value=cfg?cfg.key||'':'';
   let mv='direct';
   if(cfg)mv=cfg.proxy?'proxy':'direct';
-  else{try{if(localStorage.getItem('opc_off')==='1')mv='none';}catch(e){}}
+  else{try{if(localStorage.getItem('sbs_off')==='1')mv='none';}catch(e){}}
   $('cfg_mode').value=mv;
   $('cfg_pass').value=cfg?(cfg.passcode||''):'';
   $('cfg_warn').style.display=(mv==='proxy'||needPasscode)?'block':'none';
@@ -1891,7 +1891,7 @@ function openSet(){$('cfg_base').value=cfg?cfg.base||'':'';$('cfg_model').value=
 $('about_set').onclick=()=>{$('aboutmodal').classList.remove('on');openSet();};
 $('cfg_cancel').onclick=()=>{$('setmodal').classList.remove('on');$('overlay').classList.remove('on');};
 $('cfg_clear').onclick=()=>{cfg=null;needPasscode=false;
-  try{localStorage.removeItem('opc_llm');localStorage.removeItem('opc_off');}catch(e){}
+  try{localStorage.removeItem('sbs_llm');localStorage.removeItem('sbs_off');}catch(e){}
   renderNav();renderMsgs();applyLock();$('setmodal').classList.remove('on');$('overlay').classList.remove('on');
   toast('已清除配置');autoDetect();};
 $('cfg_save').onclick=()=>{
@@ -1900,15 +1900,15 @@ $('cfg_save').onclick=()=>{
   const passcode=$('cfg_pass').value.trim();
   if(mode==='none'){
     cfg=null;needPasscode=false;
-    try{localStorage.setItem('opc_off','1');localStorage.removeItem('opc_llm');}catch(e){}
+    try{localStorage.setItem('sbs_off','1');localStorage.removeItem('sbs_llm');}catch(e){}
     applyLock();renderNav();renderMsgs();$('setmodal').classList.remove('on');$('overlay').classList.remove('on');
     toast('已切换为纯本地检索');return;
   }
   const proxy=mode==='proxy';
   const complete=proxy?(base&&model):(base&&model&&key);
   cfg=complete?{base,model,key:proxy?'':key,proxy:proxy,passcode:passcode}:null;
-  try{cfg?localStorage.setItem('opc_llm',JSON.stringify(cfg)):localStorage.removeItem('opc_llm');
-       localStorage.removeItem('opc_off');}catch(e){}
+  try{cfg?localStorage.setItem('sbs_llm',JSON.stringify(cfg)):localStorage.removeItem('sbs_llm');
+       localStorage.removeItem('sbs_off');}catch(e){}
   applyLock();renderNav();renderMsgs();$('setmodal').classList.remove('on');$('overlay').classList.remove('on');
   if(!cfg)toast('未填完整，仍使用检索模式');
   else if(proxy&&!passcode)toast('已接入（代理模式）· 未设访问口令：拿到这个地址的人都能用你的额度');
@@ -1919,7 +1919,7 @@ function liveCfg(){return !!(cfg&&cfg.base&&cfg.model&&(cfg.key||cfg.proxy));}
 function sessionGet(k){try{return sessionStorage.getItem(k);}catch(e){return null;}}
 function sessionSet(k,v){try{sessionStorage.setItem(k,v);return true;}catch(e){return false;}}
 function needLock(){
-  if(sessionGet('opc_unlocked')==='1')return false;
+  if(sessionGet('sbs_unlocked')==='1')return false;
   if(needPasscode)return true;
   return !!(cfg&&cfg.passcode);
 }
@@ -1935,13 +1935,13 @@ $('lockgo').onclick=()=>{
   const v=$('lockin').value;
   if(needPasscode){
     if(!v){$('lockerr').textContent='请输入口令';return;}
-    if(cfg){cfg.passcode=v;try{localStorage.setItem('opc_llm',JSON.stringify(cfg));}catch(e){}}
-    sessionSet('opc_unlocked','1');needPasscode=false;
+    if(cfg){cfg.passcode=v;try{localStorage.setItem('sbs_llm',JSON.stringify(cfg));}catch(e){}}
+    sessionSet('sbs_unlocked','1');needPasscode=false;
     applyLock();renderNav();$('lockin').value='';$('lockerr').textContent='';
     toast('口令已记住，问吧');
     return;
   }
-  if(v===(cfg?cfg.passcode:'')){sessionSet('opc_unlocked','1');applyLock();$('lockin').value='';}
+  if(v===(cfg?cfg.passcode:'')){sessionSet('sbs_unlocked','1');applyLock();$('lockin').value='';}
   else{$('lockerr').textContent='口令不对';}
 };
 $('lockin').addEventListener('keydown',e=>{if(e.key==='Enter')$('lockgo').click();});
@@ -1950,7 +1950,7 @@ async function autoDetect(){
   const probe=document.documentElement;
   try{
     probe.dataset.probe='start';
-    try{if(localStorage.getItem('opc_off')==='1'){probe.dataset.probe='turned-off';return;}}catch(e){}
+    try{if(localStorage.getItem('sbs_off')==='1'){probe.dataset.probe='turned-off';return;}}catch(e){}
     if(!/^https?:$/.test(location.protocol)){probe.dataset.probe='no-http';return;}
     const base=location.origin+'/v1';
     probe.dataset.probe='fetch '+base;
@@ -1962,7 +1962,7 @@ async function autoDetect(){
     if(!j||!j.ok||!j.keyConfigured)return;
     if(!cfg||!cfg.proxy||!cfg.base){
       cfg={base:base,model:'deepseek-chat',key:'',proxy:true,passcode:(cfg&&cfg.passcode)||''};
-      try{localStorage.setItem('opc_llm',JSON.stringify(cfg));}catch(e){}
+      try{localStorage.setItem('sbs_llm',JSON.stringify(cfg));}catch(e){}
     }
     if(j.tokenRequired&&!(cfg&&cfg.passcode))needPasscode=true;
     probe.dataset.probe='ready';
@@ -1982,7 +1982,7 @@ async function llmOnce(system,user){
   if(!(cfg&&cfg.base&&cfg.model&&(cfg.key||cfg.proxy)))throw new Error('未接入模型：先在「设置」里填写 Base URL / 模型 / Key');
   const h={'Content-Type':'application/json'};
   if(!cfg.proxy)h['Authorization']='Bearer '+cfg.key;
-  else if(cfg.passcode)h['X-OPC-Token']=cfg.passcode;
+  else if(cfg.passcode)h['X-SBS-Token']=cfg.passcode;
   const r=await fetch(cfg.base.replace(/\/$/,'')+'/chat/completions',{method:'POST',headers:h,
     body:JSON.stringify({model:cfg.model,temperature:.2,stream:false,messages:[
       {role:'system',content:system},{role:'user',content:user}]})});
@@ -2037,7 +2037,7 @@ $('add_ai').onclick=async()=>{
     let j;
     if(BRAND.cloud){
       const headers={'Content-Type':'application/json'};
-      if(cfg&&cfg.passcode)headers['X-OPC-Token']=cfg.passcode;
+      if(cfg&&cfg.passcode)headers['X-SBS-Token']=cfg.passcode;
       const r=await fetch('api/ingest',{method:'POST',headers,body:JSON.stringify({content,source,kind})});
       j=await r.json().catch(()=>null);
       if(!r.ok||!j||!j.ok)throw new Error((j&&j.error&&j.error.message)||('HTTP '+r.status));
@@ -2098,7 +2098,7 @@ function renderAddPreview(j){
     let j;
     try{
       if(BRAND.cloud){
-        const headers={'Content-Type':'application/json','X-OPC-Token':cfg.passcode};
+        const headers={'Content-Type':'application/json','X-SBS-Token':cfg.passcode};
         const r=await fetch('api/commit',{method:'POST',headers,body:JSON.stringify({card:card,ima:true})});
         j=await r.json().catch(()=>null);
         if(!r.ok||!j||!j.ok)throw new Error((j&&j.error&&j.error.message)||('HTTP '+r.status));
@@ -2204,11 +2204,11 @@ document.title=BRAND.title+(BRAND.sub?" · "+BRAND.sub:"");
 document.querySelectorAll('.stoggle').forEach(b=>b.onclick=()=>{
   const k=b.dataset.sec;if(!k)return;
   secOpen[k]=!secOpen[k];
-  try{localStorage.setItem('opc_sec',JSON.stringify(secOpen));}catch(e){}
+  try{localStorage.setItem('sbs_sec',JSON.stringify(secOpen));}catch(e){}
   applySections();
 });
 try{applySections();renderNav();renderMsgs();applyLock();syncChromeHeights();
-  setSideCollapsed(localStorage.getItem('opc_side_collapsed')==='1');}catch(e){}
+  setSideCollapsed(localStorage.getItem('sbs_side_collapsed')==='1');}catch(e){}
 try{setTimeout(function(){try{autoDetect();}catch(e){}},0);}catch(e){}
 </script>
 </body>

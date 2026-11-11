@@ -21,7 +21,7 @@ api/notes.js   # GET/POST/DELETE /api/notes，笔记存 Vercel Blob
 ### proxy.js 要点
 
 - 从 `process.env.LLM_API_KEY` 取 Key，浏览器永远拿不到。
-- 校验 `X-OPC-Token`（口令），否则任何拿到地址的人都能消耗你的额度。
+- 校验 `X-SBS-Token`（口令），否则任何拿到地址的人都能消耗你的额度。
 - 校验 `Origin`，只允许自己的域名。
 - 加 `AbortSignal.timeout(9000)`，避免上游卡死把函数拖到超时。
 - `vercel.json` 里给这两个函数配 `maxDuration: 60`（默认 10s 会掐断流式响应）。
