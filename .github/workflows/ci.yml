@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: py${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: 语法检查（零依赖，不装任何包）
+        run: python -m compileall -q engine
+
+      - name: 骨架流程（未配置模型时的降级路径）
+        run: |
+          set -euo pipefail
+          python engine/sbs.py new /tmp/skeleton --title "CI 知识库" --sub "测试"
+          cp examples/demo/sources/*.md /tmp/skeleton/sources/
+          python engine/sbs.py ingest /tmp/skeleton
+          python engine/sbs.py plan /tmp/skeleton --no-llm
+          test -s /tmp/skeleton/data/taxonomy.json
+          test -s /tmp/skeleton/data/chunks.jsonl
+
+      - name: 构建 + 检索自检（示例夹具，离线可跑）
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/demo && cp -r examples/demo /tmp/demo
+          python engine/sbs.py build /tmp/demo
+          python engine/sbs.py verify /tmp/demo | tee /tmp/verify.txt
+          grep -q "离题 0 误推" /tmp/verify.txt
+          test -f /tmp/demo/dist/index.html
+          # 单文件约束：不得出现外部样式/脚本引用
+          ! grep -Eq '<script[^>]+src=|<link[^>]+rel="stylesheet"' /tmp/demo/dist/index.html
+
+      - name: 单文件体积守门（< 2MB）
+        run: |
+          set -euo pipefail
+          SIZE=$(stat -c%s /tmp/demo/dist/index.html)
+          echo "dist/index.html = $((SIZE/1024)) KB"
+          test "$SIZE" -lt 2097152

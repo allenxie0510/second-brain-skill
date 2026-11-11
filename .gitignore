@@ -2,11 +2,10 @@ __pycache__/
 *.pyc
 .DS_Store
 
-# 用户项目内容不要提交进这个仓库
-data/
-dist/
-sources/
-!examples/demo/sources/
-!examples/demo/brain.json
-tests/
+# 用户自己的知识库内容不进仓库（只忽略仓库根目录下的产物）
+/data/
+/dist/
+/sources/
+/tests/
 .env
+.venv/
